@@ -7,37 +7,21 @@ namespace projectucp1
 {
     public partial class FormProduk : Form
     {
-        private readonly string con = "Data Source=MSI;Initial Catalog=TOKO_ROTI;Integrated Security=True";
-        private readonly bool isReadOnly;
-        private readonly string currentUsername;
-        private readonly string currentRole;
-        private int selectedprodukId = -1;
+        readonly string con = "Data Source=MSI;Initial Catalog=TOKO_ROTI;Integrated Security=True";
 
-        public FormProduk(bool readOnly, string username, string role)
+        public FormProduk()
         {
             InitializeComponent();
-            isReadOnly = readOnly;
-            currentUsername = username;
-            currentRole = role;
         }
 
-        private void Form3_Load(object sender, EventArgs e)
+        private void FormProduk_Load(object sender, EventArgs e)
         {
+            dataGridView1.AutoGenerateColumns = true;
+            dataGridView1.AllowUserToAddRows = false;
             LoadData();
-
-            if (isReadOnly)
-            {
-                btnTambah.Enabled = false;
-                btnUpdate.Enabled = false;
-                btnHapus.Enabled = false;
-
-                txtNamaProduk.ReadOnly = true;
-                txtHarga.ReadOnly = true;
-                txtStok.ReadOnly = true;
-            }
         }
 
-        private void LoadData()
+        void LoadData()
         {
             using (SqlConnection conn = new SqlConnection(con))
             {
@@ -52,7 +36,7 @@ namespace projectucp1
             }
         }
 
-        private void dataGridView1_CellClick(object sender, DataGridViewCellEventArgs e)
+        private void DataGridView1_CellClick(object sender, DataGridViewCellEventArgs e)
         {
             if (e.RowIndex < 0) return;
 
@@ -63,11 +47,18 @@ namespace projectucp1
             txtStok.Text = row.Cells["stok"].Value?.ToString();
         }
 
-        private void btnTambah_Click(object sender, EventArgs e)
+        private void BtnTambah_Click(object sender, EventArgs e)
         {
             if (txtNamaProduk.Text == "" || txtHarga.Text == "" || txtStok.Text == "")
             {
                 MessageBox.Show("Semua field harus diisi");
+                return;
+            }
+
+            if (!decimal.TryParse(txtHarga.Text, out decimal harga) ||
+                !int.TryParse(txtStok.Text, out int stok) || stok < 0)
+            {
+                MessageBox.Show("Input tidak valid / stok tidak boleh negatif");
                 return;
             }
 
@@ -76,11 +67,11 @@ namespace projectucp1
                 conn.Open();
 
                 string query = "INSERT INTO produk (namaProduk, harga, stok) VALUES (@nama, @harga, @stok)";
-
                 SqlCommand cmd = new SqlCommand(query, conn);
+
                 cmd.Parameters.AddWithValue("@nama", txtNamaProduk.Text);
-                cmd.Parameters.AddWithValue("@harga", decimal.Parse(txtHarga.Text));
-                cmd.Parameters.AddWithValue("@stok", int.Parse(txtStok.Text));
+                cmd.Parameters.AddWithValue("@harga", harga);
+                cmd.Parameters.AddWithValue("@stok", stok);
 
                 cmd.ExecuteNonQuery();
             }
@@ -90,11 +81,18 @@ namespace projectucp1
             ClearForm();
         }
 
-        private void btnUpdate_Click(object sender, EventArgs e)
+        private void BtnUpdate_Click(object sender, EventArgs e)
         {
             if (dataGridView1.CurrentRow == null)
             {
                 MessageBox.Show("Pilih data terlebih dahulu");
+                return;
+            }
+
+            if (!decimal.TryParse(txtHarga.Text, out decimal harga) ||
+                !int.TryParse(txtStok.Text, out int stok) || stok < 0)
+            {
+                MessageBox.Show("Input tidak valid / stok tidak boleh negatif");
                 return;
             }
 
@@ -105,14 +103,15 @@ namespace projectucp1
                 conn.Open();
 
                 string query = @"UPDATE produk 
-                         SET namaProduk=@nama, harga=@harga, stok=@stok 
-                         WHERE produkID=@id";
+                                 SET namaProduk=@nama, harga=@harga, stok=@stok 
+                                 WHERE produkID=@id";
 
                 SqlCommand cmd = new SqlCommand(query, conn);
+
                 cmd.Parameters.AddWithValue("@id", id);
                 cmd.Parameters.AddWithValue("@nama", txtNamaProduk.Text);
-                cmd.Parameters.AddWithValue("@harga", decimal.Parse(txtHarga.Text));
-                cmd.Parameters.AddWithValue("@stok", int.Parse(txtStok.Text));
+                cmd.Parameters.AddWithValue("@harga", harga);
+                cmd.Parameters.AddWithValue("@stok", stok);
 
                 cmd.ExecuteNonQuery();
             }
@@ -121,29 +120,27 @@ namespace projectucp1
             LoadData();
         }
 
-        private void btnHapus_Click(object sender, EventArgs e)
+        private void BtnHapus_Click(object sender, EventArgs e)
         {
             if (dataGridView1.CurrentRow == null)
             {
-                MessageBox.Show("Pilih data dulu");
+                MessageBox.Show("Pilih data terlebih dahulu");
                 return;
             }
 
             int id = Convert.ToInt32(dataGridView1.CurrentRow.Cells["produkID"].Value);
 
-            DialogResult confirm = MessageBox.Show("Yakin hapus data?", "Konfirmasi", MessageBoxButtons.YesNo);
-
-            if (confirm == DialogResult.No) return;
+            if (MessageBox.Show("Yakin hapus data?", "Konfirmasi", MessageBoxButtons.YesNo) == DialogResult.No)
+                return;
 
             using (SqlConnection conn = new SqlConnection(con))
             {
                 conn.Open();
 
                 string query = "DELETE FROM produk WHERE produkID=@id";
-
                 SqlCommand cmd = new SqlCommand(query, conn);
-                cmd.Parameters.AddWithValue("@id", id);
 
+                cmd.Parameters.AddWithValue("@id", id);
                 cmd.ExecuteNonQuery();
             }
 
@@ -152,35 +149,22 @@ namespace projectucp1
             ClearForm();
         }
 
-        private void btnRefresh_Click(object sender, EventArgs e)
+        private void BtnRefresh_Click(object sender, EventArgs e)
         {
             LoadData();
         }
 
-        private void pictureBox1_Click(object sender, EventArgs e)
-        {
-            if (isReadOnly)
-            {
-                FormLogin login = new FormLogin();
-                login.Show();
-                this.Close();
-                return;
-            }
-
-            FormAdminMenu adminMenu = new FormAdminMenu(currentUsername, currentRole);
-            adminMenu.Show();
-            this.Hide();
-        }
-
-        private void label1_Click(object sender, EventArgs e)
-        {
-        }
-
-        private void ClearForm()
+        void ClearForm()
         {
             txtNamaProduk.Clear();
             txtHarga.Clear();
             txtStok.Clear();
+        }
+
+        private void TxtStok_KeyPress(object sender, KeyPressEventArgs e)
+        {
+            if (!char.IsControl(e.KeyChar) && !char.IsDigit(e.KeyChar))
+                e.Handled = true;
         }
     }
 }
