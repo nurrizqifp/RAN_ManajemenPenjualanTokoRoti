@@ -9,11 +9,15 @@ namespace projectucp1
     {
         private readonly string con = "Data Source=MSI;Initial Catalog=TOKO_ROTI;Integrated Security=True";
         private readonly bool readOnly;
+        private readonly string username;
+        private readonly string role;
 
         public FormProduk(bool readOnly, string user, string role)
         {
             InitializeComponent();
             this.readOnly = readOnly;
+            this.username = user;
+            this.role = role;
         }
 
         private void FormProduk_Load(object sender, EventArgs e)
@@ -42,16 +46,28 @@ namespace projectucp1
 
         private void BtnTambah_Click(object sender, EventArgs e)
         {
-            using (SqlConnection conn = new SqlConnection(con))
+            if (!ValidateInput())
+                return;
+
+            try
             {
-                conn.Open();
-                var cmd = new SqlCommand("INSERT INTO produk VALUES (@n,@h,@s)", conn);
-                cmd.Parameters.AddWithValue("@n", txtNamaProduk.Text);
-                cmd.Parameters.AddWithValue("@h", decimal.Parse(txtHarga.Text));
-                cmd.Parameters.AddWithValue("@s", int.Parse(txtStok.Text));
-                cmd.ExecuteNonQuery();
+                using (SqlConnection conn = new SqlConnection(con))
+                {
+                    conn.Open();
+                    var cmd = new SqlCommand("INSERT INTO produk (namaProduk, harga, stok) VALUES (@n,@h,@s)", conn);
+                    cmd.Parameters.AddWithValue("@n", txtNamaProduk.Text);
+                    cmd.Parameters.AddWithValue("@h", decimal.Parse(txtHarga.Text));
+                    cmd.Parameters.AddWithValue("@s", int.Parse(txtStok.Text));
+                    cmd.ExecuteNonQuery();
+                }
+                MessageBox.Show("Produk berhasil ditambah", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                LoadData();
+                ClearInputs();
             }
-            LoadData();
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         private void DataGridView1_CellClick(object sender, DataGridViewCellEventArgs e)
@@ -75,7 +91,16 @@ namespace projectucp1
 
         private void BtnUpdate_Click(object sender, EventArgs e)
         {
-            if (dataGridView1.SelectedRows.Count > 0)
+            if (dataGridView1.SelectedRows.Count == 0)
+            {
+                MessageBox.Show("Pilih satu produk yang akan diupdate", "Peringatan", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            if (!ValidateInput())
+                return;
+
+            try
             {
                 DataGridViewRow row = dataGridView1.SelectedRows[0];
                 int id = (int)row.Cells[0].Value;
@@ -90,34 +115,98 @@ namespace projectucp1
                     cmd.Parameters.AddWithValue("@id", id);
                     cmd.ExecuteNonQuery();
                 }
+                MessageBox.Show("Produk berhasil diupdate", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 LoadData();
+                ClearInputs();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
         private void BtnHapus_Click(object sender, EventArgs e)
         {
-            if (dataGridView1.SelectedRows.Count > 0)
+            if (dataGridView1.SelectedRows.Count == 0)
             {
-                DataGridViewRow row = dataGridView1.SelectedRows[0];
-                int id = (int)row.Cells[0].Value;
+                MessageBox.Show("Pilih minimal 1 data untuk dihapus", "Peringatan", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
 
+            // Konfirmasi sebelum hapus
+            string message = dataGridView1.SelectedRows.Count == 1 
+                ? "Yakin ingin menghapus produk ini?" 
+                : $"Yakin ingin menghapus {dataGridView1.SelectedRows.Count} produk?";
+
+            DialogResult result = MessageBox.Show(message, "Konfirmasi Hapus", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+            if (result != DialogResult.Yes)
+                return;
+
+            try
+            {
                 using (SqlConnection conn = new SqlConnection(con))
                 {
                     conn.Open();
-                    var cmd = new SqlCommand("DELETE FROM produk WHERE produkID=@id", conn);
-                    cmd.Parameters.AddWithValue("@id", id);
-                    cmd.ExecuteNonQuery();
+
+                    // Loop setiap selected row dan hapus satu per satu
+                    foreach (DataGridViewRow row in dataGridView1.SelectedRows)
+                    {
+                        if (row.IsNewRow) continue; // Skip row baru yang belum tersimpan
+
+                        int id = (int)row.Cells[0].Value;
+
+                        SqlCommand cmd = new SqlCommand("DELETE FROM produk WHERE produkID=@id", conn);
+                        cmd.Parameters.AddWithValue("@id", id);
+                        cmd.ExecuteNonQuery();
+                    }
                 }
+
+                int deletedCount = dataGridView1.SelectedRows.Count;
+                MessageBox.Show($"{deletedCount} produk berhasil dihapus", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 LoadData();
+                ClearInputs();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
         private void BtnRefresh_Click(object sender, EventArgs e)
         {
             LoadData();
+            ClearInputs();
+        }
+
+        private bool ValidateInput()
+        {
+            if (string.IsNullOrWhiteSpace(txtNamaProduk.Text))
+            {
+                MessageBox.Show("Nama produk tidak boleh kosong", "Validasi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return false;
+            }
+
+            if (!decimal.TryParse(txtHarga.Text, out decimal harga) || harga <= 0)
+            {
+                MessageBox.Show("Harga harus berupa angka positif", "Validasi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return false;
+            }
+
+            if (!int.TryParse(txtStok.Text, out int stok) || stok < 0)
+            {
+                MessageBox.Show("Stok harus berupa angka positif atau nol", "Validasi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return false;
+            }
+
+            return true;
+        }
+
+        private void ClearInputs()
+        {
             txtNamaProduk.Clear();
             txtHarga.Clear();
             txtStok.Clear();
+            dataGridView1.ClearSelection();
         }
     }
 }
