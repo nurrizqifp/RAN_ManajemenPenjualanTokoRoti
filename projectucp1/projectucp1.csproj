@@ -46,11 +46,23 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="FormKasirManagement.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="FormKasirManagement.Designer.cs">
+      <DependentUpon>FormKasirManagement.cs</DependentUpon>
+    </Compile>
     <Compile Include="FormKasirMenu.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="FormKasirMenu.Designer.cs">
       <DependentUpon>FormKasirMenu.cs</DependentUpon>
+    </Compile>
+    <Compile Include="FormLaporan.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="FormLaporan.Designer.cs">
+      <DependentUpon>FormLaporan.cs</DependentUpon>
     </Compile>
     <Compile Include="FormLogin.cs">
       <SubType>Form</SubType>
@@ -137,6 +149,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\gambar icon kembali.jpg" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="DATABASE_SETUP.sql" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
