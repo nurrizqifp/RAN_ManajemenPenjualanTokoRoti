@@ -150,8 +150,5 @@
   <ItemGroup>
     <None Include="Resources\gambar icon kembali.jpg" />
   </ItemGroup>
-  <ItemGroup>
-    <Content Include="DATABASE_SETUP.sql" />
-  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
