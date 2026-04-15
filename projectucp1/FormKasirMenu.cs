@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Data.SqlClient;
 using System.Windows.Forms;
 
 namespace projectucp1
@@ -7,6 +8,7 @@ namespace projectucp1
     {
         private string currentUsername;
         private string currentRole;
+        private string con = "Data Source=MSI;Initial Catalog=TOKO_ROTI;Integrated Security=True";
 
         public FormKasirMenu(string username, string role)
         {
@@ -20,9 +22,6 @@ namespace projectucp1
             LblUser.Text = $"Kasir: {currentUsername}";
         }
 
-        // ===============================
-        // BUTTON LIHAT PRODUK (READ ONLY)
-        // ===============================
         private void pictureBox1_Click(object sender, EventArgs e)
         {
             FormProduk produk = new FormProduk(true, currentUsername, currentRole);
@@ -30,28 +29,43 @@ namespace projectucp1
             this.Hide();
         }
 
-        // ===============================
-        // BUTTON TRANSAKSI
-        // ===============================
         private void pictureBox2_Click(object sender, EventArgs e)
         {
-            // sementara placeholder dulu (karena FormTransaksi belum dibuat)
-            MessageBox.Show("Form Transaksi belum dibuat.");
+            int kasirID = GetKasirID(currentUsername);
 
-            // nanti ganti dengan:
-            // FormTransaksi trx = new FormTransaksi(currentUsername);
-            // trx.Show();
-            // this.Hide();
+            FormTransaksi trx = new FormTransaksi(kasirID);
+            trx.Show();
+            this.Hide();
         }
 
-        // ===============================
-        // BUTTON LOGOUT
-        // ===============================
         private void pictureBox3_Click(object sender, EventArgs e)
         {
             FormLogin login = new FormLogin();
             login.Show();
             this.Close();
+        }
+
+        private int GetKasirID(string username)
+        {
+            using (SqlConnection conn = new SqlConnection(con))
+            {
+                conn.Open();
+
+                string query = @"SELECT k.kasirID
+                                 FROM kasirMenu k
+                                 JOIN login l ON k.loginID = l.loginID
+                                 WHERE l.username = @user";
+
+                SqlCommand cmd = new SqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@user", username);
+
+                object result = cmd.ExecuteScalar();
+
+                if (result == null)
+                    throw new Exception("Kasir tidak ditemukan");
+
+                return Convert.ToInt32(result);
+            }
         }
     }
 }
