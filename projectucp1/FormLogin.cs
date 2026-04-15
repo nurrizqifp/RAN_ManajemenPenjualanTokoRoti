@@ -15,36 +15,56 @@ namespace projectucp1
 
         private void BtnLogin_Click(object sender, EventArgs e)
         {
-            using (SqlConnection conn = new SqlConnection(con))
+            if (string.IsNullOrWhiteSpace(TxtBoxUsername.Text) || string.IsNullOrWhiteSpace(TxtBoxPassword.Text))
             {
-                conn.Open();
+                MessageBox.Show("Username dan password tidak boleh kosong", "Validasi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
 
-                string query = "SELECT role FROM login WHERE username=@u AND password=@p";
-                SqlCommand cmd = new SqlCommand(query, conn);
-
-                cmd.Parameters.AddWithValue("@u", TxtBoxUsername.Text);
-                cmd.Parameters.AddWithValue("@p", TxtBoxPassword.Text);
-
-                var role = cmd.ExecuteScalar();
-
-                if (role == null)
+            try
+            {
+                using (SqlConnection conn = new SqlConnection(con))
                 {
-                    MessageBox.Show("Login gagal");
-                    return;
-                }
+                    conn.Open();
 
-                string r = role.ToString().ToLower();
+                    string query = "SELECT role FROM login WHERE username=@u AND password=@p";
+                    SqlCommand cmd = new SqlCommand(query, conn);
 
-                if (r == "admin")
-                {
-                    new FormAdminMenu(TxtBoxUsername.Text, r).Show();
-                }
-                else
-                {
-                    new FormKasirMenu(TxtBoxUsername.Text, r).Show();
-                }
+                    cmd.Parameters.AddWithValue("@u", TxtBoxUsername.Text);
+                    cmd.Parameters.AddWithValue("@p", TxtBoxPassword.Text);
 
-                this.Hide();
+                    var role = cmd.ExecuteScalar();
+
+                    if (role == null)
+                    {
+                        MessageBox.Show("Username atau password salah", "Login Gagal", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        TxtBoxPassword.Clear();
+                        TxtBoxUsername.Focus();
+                        return;
+                    }
+
+                    string r = role.ToString().ToLower();
+
+                    if (r == "admin")
+                    {
+                        new FormAdminMenu(TxtBoxUsername.Text, r).Show();
+                    }
+                    else if (r == "kasir")
+                    {
+                        new FormKasirMenu(TxtBoxUsername.Text, r).Show();
+                    }
+                    else
+                    {
+                        MessageBox.Show("Role tidak dikenali", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+
+                    this.Hide();
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
