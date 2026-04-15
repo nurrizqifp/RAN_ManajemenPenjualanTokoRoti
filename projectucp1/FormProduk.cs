@@ -11,7 +11,7 @@ namespace projectucp1
         private readonly bool isReadOnly;
         private readonly string currentUsername;
         private readonly string currentRole;
-        private int selectedProductId = -1;
+        private int selectedprodukId = -1;
 
         public FormProduk(bool readOnly, string username, string role)
         {
@@ -44,7 +44,7 @@ namespace projectucp1
                 try
                 {
                     conn.Open();
-                    string query = "SELECT productID, namaProduk, harga, stok FROM product";
+                    string query = "SELECT produkID, namaProduk, harga, stok FROM produk";
                     SqlDataAdapter da = new SqlDataAdapter(query, conn);
                     DataTable dt = new DataTable();
                     da.Fill(dt);
@@ -64,7 +64,7 @@ namespace projectucp1
             DataGridViewRow row = dataGridView1.Rows[e.RowIndex];
 
             if (row.Cells[0].Value != null)
-                selectedProductId = Convert.ToInt32(row.Cells[0].Value);
+                selectedprodukId = Convert.ToInt32(row.Cells[0].Value);
 
             txtNamaProduk.Text = row.Cells[1].Value?.ToString();
             txtHarga.Text = row.Cells[2].Value?.ToString();
@@ -104,7 +104,7 @@ namespace projectucp1
                 try
                 {
                     conn.Open();
-                    string query = "INSERT INTO product (namaProduk, harga, stok) VALUES (@nama, @harga, @stok)";
+                    string query = "INSERT INTO produk (namaProduk, harga, stok) VALUES (@nama, @harga, @stok)";
                     using (SqlCommand cmd = new SqlCommand(query, conn))
                     {
                         cmd.Parameters.AddWithValue("@nama", nama);
@@ -133,7 +133,7 @@ namespace projectucp1
                 return;
             }
 
-            if (selectedProductId == -1)
+            if (selectedprodukId == -1)
             {
                 MessageBox.Show("Pilih produk yang akan diupdate.");
                 return;
@@ -164,15 +164,15 @@ namespace projectucp1
                 try
                 {
                     conn.Open();
-                    string query = @"UPDATE product
+                    string query = @"UPDATE produk
                                      SET namaProduk = @nama,
                                          harga = @harga,
                                          stok = @stok
-                                     WHERE productID = @id";
+                                     WHERE produkID = @id";
 
                     using (SqlCommand cmd = new SqlCommand(query, conn))
                     {
-                        cmd.Parameters.AddWithValue("@id", selectedProductId);
+                        cmd.Parameters.AddWithValue("@id", selectedprodukId);
                         cmd.Parameters.AddWithValue("@nama", nama);
                         cmd.Parameters.AddWithValue("@harga", harga);
                         cmd.Parameters.AddWithValue("@stok", stok);
@@ -199,7 +199,7 @@ namespace projectucp1
                 return;
             }
 
-            if (selectedProductId == -1)
+            if (selectedprodukId == -1)
             {
                 MessageBox.Show("Pilih produk yang akan dihapus.");
                 return;
@@ -220,11 +220,11 @@ namespace projectucp1
                 try
                 {
                     conn.Open();
-                    string query = "DELETE FROM product WHERE productID = @id";
+                    string query = "DELETE FROM produk WHERE produkID = @id";
 
                     using (SqlCommand cmd = new SqlCommand(query, conn))
                     {
-                        cmd.Parameters.AddWithValue("@id", selectedProductId);
+                        cmd.Parameters.AddWithValue("@id", selectedprodukId);
                         cmd.ExecuteNonQuery();
                     }
 
@@ -265,7 +265,7 @@ namespace projectucp1
 
         private void ClearInput()
         {
-            selectedProductId = -1;
+            selectedprodukId = -1;
             txtNamaProduk.Clear();
             txtHarga.Clear();
             txtStok.Clear();
