@@ -7,22 +7,27 @@ namespace projectucp1
 {
     public partial class FormTransaksi : Form
     {
-        string con = "Data Source=MSI;Initial Catalog=TOKO_ROTI;Integrated Security=True";
+        private readonly string con = "Data Source=MSI;Initial Catalog=TOKO_ROTI;Integrated Security=True";
+        private readonly string username;
 
         DataTable keranjang = new DataTable();
-        decimal totalHarga = 0;
-        int kasirID;
 
-        public FormTransaksi(int kasirID)
+        public FormTransaksi(string user)
         {
             InitializeComponent();
-            this.kasirID = kasirID;
+            username = user;
         }
 
         private void FormTransaksi_Load(object sender, EventArgs e)
         {
+            keranjang.Columns.Add("produkID");
+            keranjang.Columns.Add("nama");
+            keranjang.Columns.Add("harga");
+            keranjang.Columns.Add("qty");
+
+            dgvKeranjang.DataSource = keranjang;
+
             LoadProduk();
-            InitKeranjang();
         }
 
         void LoadProduk()
@@ -30,59 +35,38 @@ namespace projectucp1
             using (SqlConnection conn = new SqlConnection(con))
             {
                 conn.Open();
-                SqlDataAdapter da = new SqlDataAdapter("SELECT produkID, namaProduk, harga FROM produk", conn);
-                DataTable dt = new DataTable();
-                da.Fill(dt);
+                SqlCommand cmd = new SqlCommand("SELECT * FROM produk", conn);
+                SqlDataReader r = cmd.ExecuteReader();
 
-                cmbProduk.DataSource = dt;
-                cmbProduk.DisplayMember = "namaProduk";
-                cmbProduk.ValueMember = "produkID";
+                while (r.Read())
+                {
+                    cmbProduk.Items.Add(r["produkID"] + " - " + r["namaProduk"]);
+                }
             }
-        }
-
-        void InitKeranjang()
-        {
-            keranjang.Columns.Add("produkID", typeof(int));
-            keranjang.Columns.Add("namaProduk", typeof(string));
-            keranjang.Columns.Add("harga", typeof(decimal));
-            keranjang.Columns.Add("qty", typeof(int));
-            keranjang.Columns.Add("subtotal", typeof(decimal));
-
-            dgvKeranjang.DataSource = keranjang;
-        }
-
-        private void cmbProduk_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            if (cmbProduk.SelectedItem is DataRowView row)
-                txtHarga.Text = row["harga"].ToString();
         }
 
         private void btnTambah_Click(object sender, EventArgs e)
         {
-            if (!int.TryParse(txtQty.Text, out int qty) || qty <= 0)
+            string[] split = cmbProduk.Text.Split('-');
+            int id = int.Parse(split[0]);
+
+            using (SqlConnection conn = new SqlConnection(con))
             {
-                MessageBox.Show("Qty tidak valid");
-                return;
-            }
+                conn.Open();
 
-            int produkID = Convert.ToInt32(cmbProduk.SelectedValue);
-            string nama = cmbProduk.Text;
-            decimal harga = decimal.Parse(txtHarga.Text);
+                SqlCommand cmd = new SqlCommand("SELECT * FROM produk WHERE produkID=@id", conn);
+                cmd.Parameters.AddWithValue("@id", id);
 
-            decimal subtotal = harga * qty;
-
-            keranjang.Rows.Add(produkID, nama, harga, qty, subtotal);
-
-            totalHarga += subtotal;
-            lblTotal.Text = "Total: " + totalHarga.ToString("N0");
-        }
-
-        private void txtBayar_TextChanged(object sender, EventArgs e)
-        {
-            if (decimal.TryParse(txtBayar.Text, out decimal bayar))
-            {
-                decimal kembali = bayar - totalHarga;
-                lblKembalian.Text = "Kembalian: " + kembali.ToString("N0");
+                var r = cmd.ExecuteReader();
+                if (r.Read())
+                {
+                    keranjang.Rows.Add(
+                        id,
+                        r["namaProduk"],
+                        r["harga"],
+                        int.Parse(txtQty.Text)
+                    );
+                }
             }
         }
 
@@ -96,49 +80,84 @@ namespace projectucp1
                 try
                 {
                     SqlCommand cmd = new SqlCommand(
-                        "INSERT INTO transaksi (tanggal, totalHarga, kasirID) OUTPUT INSERTED.transaksiID VALUES (GETDATE(), @total, @kasir)",
+                        "INSERT INTO transaksi(tanggal, username) OUTPUT INSERTED.transaksiID VALUES(GETDATE(),@u)",
                         conn, trans);
 
-                    cmd.Parameters.AddWithValue("@total", totalHarga);
-                    cmd.Parameters.AddWithValue("@kasir", kasirID);
-
+                    cmd.Parameters.AddWithValue("@u", username);
                     int transaksiID = (int)cmd.ExecuteScalar();
 
                     foreach (DataRow row in keranjang.Rows)
                     {
-                        SqlCommand detail = new SqlCommand(
-                            "INSERT INTO detailTransaksi (transaksiID, produkID, jumlah, hargaSatuan, total) VALUES (@tid,@pid,@qty,@harga,@total)",
+                        SqlCommand d = new SqlCommand(
+                            "INSERT INTO detail_transaksi VALUES(@tid,@pid,@qty)",
                             conn, trans);
 
-                        detail.Parameters.AddWithValue("@tid", transaksiID);
-                        detail.Parameters.AddWithValue("@pid", row["produkID"]);
-                        detail.Parameters.AddWithValue("@qty", row["qty"]);
-                        detail.Parameters.AddWithValue("@harga", row["harga"]);
-                        detail.Parameters.AddWithValue("@total", row["subtotal"]);
-                        detail.ExecuteNonQuery();
+                        d.Parameters.AddWithValue("@tid", transaksiID);
+                        d.Parameters.AddWithValue("@pid", row["produkID"]);
+                        d.Parameters.AddWithValue("@qty", row["qty"]);
+                        d.ExecuteNonQuery();
 
-                        SqlCommand stok = new SqlCommand(
-                            "UPDATE produk SET stok = stok - @qty WHERE produkID=@pid",
+                        SqlCommand u = new SqlCommand(
+                            "UPDATE produk SET stok = stok - @q WHERE produkID=@id",
                             conn, trans);
 
-                        stok.Parameters.AddWithValue("@qty", row["qty"]);
-                        stok.Parameters.AddWithValue("@pid", row["produkID"]);
-                        stok.ExecuteNonQuery();
+                        u.Parameters.AddWithValue("@q", row["qty"]);
+                        u.Parameters.AddWithValue("@id", row["produkID"]);
+                        u.ExecuteNonQuery();
                     }
 
                     trans.Commit();
                     MessageBox.Show("Transaksi berhasil");
-
-                    keranjang.Rows.Clear();
-                    totalHarga = 0;
-                    lblTotal.Text = "Total: 0";
                 }
-                catch (Exception ex)
+                catch
                 {
                     trans.Rollback();
-                    MessageBox.Show("Error: " + ex.Message);
+                    MessageBox.Show("Gagal transaksi");
                 }
             }
+        }
+
+        private void cmbProduk_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (cmbProduk.SelectedIndex >= 0)
+            {
+                string[] split = cmbProduk.Text.Split('-');
+                if (split.Length > 0 && int.TryParse(split[0].Trim(), out int id))
+                {
+                    using (SqlConnection conn = new SqlConnection(con))
+                    {
+                        conn.Open();
+                        SqlCommand cmd = new SqlCommand("SELECT harga FROM produk WHERE produkID=@id", conn);
+                        cmd.Parameters.AddWithValue("@id", id);
+                        var harga = cmd.ExecuteScalar();
+                        if (harga != null)
+                        {
+                            txtHarga.Text = harga.ToString();
+                        }
+                    }
+                }
+            }
+        }
+
+        private void txtBayar_TextChanged(object sender, EventArgs e)
+        {
+            decimal total = 0;
+            decimal bayar = 0;
+
+            foreach (DataRow row in keranjang.Rows)
+            {
+                decimal harga = decimal.Parse(row["harga"].ToString());
+                int qty = int.Parse(row["qty"].ToString());
+                total += harga * qty;
+            }
+
+            if (decimal.TryParse(txtBayar.Text, out bayar))
+            {
+                decimal kembalian = bayar - total;
+                lblKembalian.Text = $"Kembalian: {kembalian}";
+            }
+
+            lblTotal.Text = $"Total: {total}";
         }
     }
 }

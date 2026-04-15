@@ -13,67 +13,44 @@ namespace projectucp1
             InitializeComponent();
         }
 
-        private void label1_Click(object sender, EventArgs e)
-        {
-        }
-
         private void BtnLogin_Click(object sender, EventArgs e)
         {
-            string username = TxtBoxUsername.Text.Trim();
-            string password = TxtBoxPassword.Text;
-
-            if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+            using (SqlConnection conn = new SqlConnection(con))
             {
-                MessageBox.Show("Username dan password wajib diisi.");
-                return;
-            }
+                conn.Open();
 
-            try
-            {
-                using (SqlConnection conn = new SqlConnection(con))
+                string query = "SELECT role FROM login WHERE username=@u AND password=@p";
+                SqlCommand cmd = new SqlCommand(query, conn);
+
+                cmd.Parameters.AddWithValue("@u", TxtBoxUsername.Text);
+                cmd.Parameters.AddWithValue("@p", TxtBoxPassword.Text);
+
+                var role = cmd.ExecuteScalar();
+
+                if (role == null)
                 {
-                    conn.Open();
-
-                    string query = "SELECT role FROM login WHERE username = @username AND password = @password";
-
-                    using (SqlCommand cmd = new SqlCommand(query, conn))
-                    {
-                        cmd.Parameters.AddWithValue("@username", username);
-                        cmd.Parameters.AddWithValue("@password", password);
-
-                        object result = cmd.ExecuteScalar();
-
-                        if (result == null)
-                        {
-                            MessageBox.Show("Username atau password salah.");
-                            return;
-                        }
-
-                        string role = result.ToString().Trim().ToLower();
-
-                        if (role == "admin" || role == "produsen")
-                        {
-                            FormAdminMenu formAdmin = new FormAdminMenu(username, role);
-                            formAdmin.Show();
-                            this.Hide();
-                        }
-                        else if (role == "kasir")
-                        {
-                            FormKasirMenu kasir = new FormKasirMenu(username, role);
-                            kasir.Show();
-                            this.Hide();
-                        }
-                        else
-                        {
-                            MessageBox.Show("Role tidak dikenali oleh sistem.");
-                        }
-                    }
+                    MessageBox.Show("Login gagal");
+                    return;
                 }
+
+                string r = role.ToString().ToLower();
+
+                if (r == "admin")
+                {
+                    new FormAdminMenu(TxtBoxUsername.Text, r).Show();
+                }
+                else
+                {
+                    new FormKasirMenu(TxtBoxUsername.Text, r).Show();
+                }
+
+                this.Hide();
             }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Koneksi gagal: " + ex.Message);
-            }
+        }
+
+        private void label1_Click(object sender, EventArgs e)
+        {
+            // Label click handler
         }
     }
 }

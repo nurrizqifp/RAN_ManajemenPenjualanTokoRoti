@@ -5,33 +5,36 @@ namespace projectucp1
 {
     public partial class FormAdminMenu : Form
     {
-        private readonly string currentUsername;
-        private readonly string currentRole;
+        private readonly string username;
+        private readonly string role;
 
-        public FormAdminMenu(string username, string role)
+        public FormAdminMenu(string user, string role)
         {
             InitializeComponent();
-            currentUsername = username;
-            currentRole = role;
+            username = user;
+            this.role = role;
+        }
+
+        private void FormAdminMenu_Load(object sender, EventArgs e)
+        {
+            LblUser.Text = $"{username} ({role})";
         }
 
         private void Form2_Load(object sender, EventArgs e)
         {
-            LblUser.Text = $"User: {currentUsername} ({currentRole})";
+            FormAdminMenu_Load(sender, e);
         }
 
         private void pictureBox1_Click(object sender, EventArgs e)
         {
-            FormProduk formProduk = new FormProduk(false, currentUsername, currentRole);
-            formProduk.Show();
+            new FormProduk(false, username, role).Show();
             this.Hide();
         }
 
         private void pictureBox2_Click(object sender, EventArgs e)
         {
-            FormLogin login = new FormLogin();
-            login.Show();
-            this.Close();
+            new FormLogin().Show();
+            this.Hide();
         }
     }
 }
