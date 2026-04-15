@@ -43,8 +43,8 @@ namespace projectucp1
 
         private void pictureBox3_Click(object sender, EventArgs e)
         {
-            // Open Transaction History
-            new FormLaporan(username).Show();
+            // Open Transaction Report
+            new FormLaporan(username, role).Show();
             this.Hide();
         }
 
