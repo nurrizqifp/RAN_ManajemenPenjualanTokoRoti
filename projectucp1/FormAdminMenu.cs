@@ -33,7 +33,25 @@ namespace projectucp1
 
         private void pictureBox2_Click(object sender, EventArgs e)
         {
-            new FormLogin().Show();
+            DialogResult result = MessageBox.Show("Yakin ingin logout?", "Konfirmasi Logout", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+            if (result == DialogResult.Yes)
+            {
+                this.Close();
+                new FormLogin().Show();
+            }
+        }
+
+        private void pictureBox3_Click(object sender, EventArgs e)
+        {
+            // Open Transaction History
+            new FormLaporan(username).Show();
+            this.Hide();
+        }
+
+        private void pictureBox4_Click(object sender, EventArgs e)
+        {
+            // Open Kasir Management
+            new FormKasirManagement(username).Show();
             this.Hide();
         }
     }
