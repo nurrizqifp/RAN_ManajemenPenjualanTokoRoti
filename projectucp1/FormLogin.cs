@@ -59,11 +59,9 @@ namespace projectucp1
                         }
                         else if (role == "kasir")
                         {
-                            MessageBox.Show("Form Kasir belum dibuat. Setelah Anda menambah FormKasirMenu, arahkan login kasir ke form tersebut.");
-                            // Nanti ubah menjadi:
-                            // FormKasirMenu formKasir = new FormKasirMenu(username, role);
-                            // formKasir.Show();
-                            // this.Hide();
+                            FormKasirMenu kasir = new FormKasirMenu(username, role);
+                            kasir.Show();
+                            this.Hide();
                         }
                         else
                         {
