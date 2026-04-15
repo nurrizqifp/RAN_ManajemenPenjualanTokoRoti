@@ -7,11 +7,23 @@ namespace projectucp1
 {
     public partial class FormProduk : Form
     {
-        readonly string con = "Data Source=MSI;Initial Catalog=TOKO_ROTI;Integrated Security=True";
+        private readonly string con = "Data Source=MSI;Initial Catalog=TOKO_ROTI;Integrated Security=True";
+        private readonly bool isReadOnly;
+        private readonly string currentUsername;
+        private readonly string currentRole;
+        private int selectedProductId = -1;
 
         public FormProduk()
         {
             InitializeComponent();
+        }
+
+        public FormProduk(bool readOnly, string username, string role)
+        {
+            InitializeComponent();
+            isReadOnly = readOnly;
+            currentUsername = username;
+            currentRole = role;
         }
 
         private void FormProduk_Load(object sender, EventArgs e)
@@ -19,9 +31,20 @@ namespace projectucp1
             dataGridView1.AutoGenerateColumns = true;
             dataGridView1.AllowUserToAddRows = false;
             LoadData();
+
+            if (isReadOnly)
+            {
+                btnTambah.Enabled = false;
+                btnUpdate.Enabled = false;
+                btnHapus.Enabled = false;
+
+                txtNamaProduk.ReadOnly = true;
+                txtHarga.ReadOnly = true;
+                txtStok.ReadOnly = true;
+            }
         }
 
-        void LoadData()
+        private void LoadData()
         {
             using (SqlConnection conn = new SqlConnection(con))
             {
@@ -41,6 +64,7 @@ namespace projectucp1
             if (e.RowIndex < 0) return;
 
             DataGridViewRow row = dataGridView1.Rows[e.RowIndex];
+            selectedProductId = Convert.ToInt32(row.Cells["produkID"].Value);
 
             txtNamaProduk.Text = row.Cells["namaProduk"].Value?.ToString();
             txtHarga.Text = row.Cells["harga"].Value?.ToString();
@@ -49,122 +73,138 @@ namespace projectucp1
 
         private void BtnTambah_Click(object sender, EventArgs e)
         {
-            if (txtNamaProduk.Text == "" || txtHarga.Text == "" || txtStok.Text == "")
+            if (isReadOnly)
             {
-                MessageBox.Show("Semua field harus diisi");
+                MessageBox.Show("Kasir tidak memiliki akses tambah produk.");
                 return;
             }
 
-            if (!decimal.TryParse(txtHarga.Text, out decimal harga) ||
-                !int.TryParse(txtStok.Text, out int stok) || stok < 0)
+            if (string.IsNullOrWhiteSpace(txtNamaProduk.Text))
             {
-                MessageBox.Show("Input tidak valid / stok tidak boleh negatif");
+                MessageBox.Show("Nama produk wajib diisi.");
+                return;
+            }
+
+            if (!decimal.TryParse(txtHarga.Text, out decimal harga))
+            {
+                MessageBox.Show("Harga tidak valid.");
+                return;
+            }
+
+            if (!int.TryParse(txtStok.Text, out int stok) || stok < 0)
+            {
+                MessageBox.Show("Stok tidak valid atau tidak boleh negatif.");
                 return;
             }
 
             using (SqlConnection conn = new SqlConnection(con))
             {
                 conn.Open();
-
                 string query = "INSERT INTO produk (namaProduk, harga, stok) VALUES (@nama, @harga, @stok)";
-                SqlCommand cmd = new SqlCommand(query, conn);
-
-                cmd.Parameters.AddWithValue("@nama", txtNamaProduk.Text);
-                cmd.Parameters.AddWithValue("@harga", harga);
-                cmd.Parameters.AddWithValue("@stok", stok);
-
-                cmd.ExecuteNonQuery();
+                using (SqlCommand cmd = new SqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@nama", txtNamaProduk.Text.Trim());
+                    cmd.Parameters.AddWithValue("@harga", harga);
+                    cmd.Parameters.AddWithValue("@stok", stok);
+                    cmd.ExecuteNonQuery();
+                }
             }
 
-            MessageBox.Show("Data berhasil ditambahkan");
+            MessageBox.Show("Data berhasil ditambahkan.");
             LoadData();
-            ClearForm();
         }
 
         private void BtnUpdate_Click(object sender, EventArgs e)
         {
-            if (dataGridView1.CurrentRow == null)
+            if (isReadOnly)
             {
-                MessageBox.Show("Pilih data terlebih dahulu");
+                MessageBox.Show("Kasir tidak memiliki akses update produk.");
                 return;
             }
 
-            if (!decimal.TryParse(txtHarga.Text, out decimal harga) ||
-                !int.TryParse(txtStok.Text, out int stok) || stok < 0)
+            if (selectedProductId == -1 && dataGridView1.CurrentRow == null)
             {
-                MessageBox.Show("Input tidak valid / stok tidak boleh negatif");
+                MessageBox.Show("Pilih data terlebih dahulu.");
                 return;
             }
 
-            int id = Convert.ToInt32(dataGridView1.CurrentRow.Cells["produkID"].Value);
+            if (!decimal.TryParse(txtHarga.Text, out decimal harga))
+            {
+                MessageBox.Show("Harga tidak valid.");
+                return;
+            }
+
+            if (!int.TryParse(txtStok.Text, out int stok) || stok < 0)
+            {
+                MessageBox.Show("Stok tidak valid atau tidak boleh negatif.");
+                return;
+            }
+
+            int id = selectedProductId != -1
+                ? selectedProductId
+                : Convert.ToInt32(dataGridView1.CurrentRow.Cells["produkID"].Value);
 
             using (SqlConnection conn = new SqlConnection(con))
             {
                 conn.Open();
-
-                string query = @"UPDATE produk 
-                                 SET namaProduk=@nama, harga=@harga, stok=@stok 
+                string query = @"UPDATE produk
+                                 SET namaProduk=@nama, harga=@harga, stok=@stok
                                  WHERE produkID=@id";
 
-                SqlCommand cmd = new SqlCommand(query, conn);
-
-                cmd.Parameters.AddWithValue("@id", id);
-                cmd.Parameters.AddWithValue("@nama", txtNamaProduk.Text);
-                cmd.Parameters.AddWithValue("@harga", harga);
-                cmd.Parameters.AddWithValue("@stok", stok);
-
-                cmd.ExecuteNonQuery();
+                using (SqlCommand cmd = new SqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@id", id);
+                    cmd.Parameters.AddWithValue("@nama", txtNamaProduk.Text.Trim());
+                    cmd.Parameters.AddWithValue("@harga", harga);
+                    cmd.Parameters.AddWithValue("@stok", stok);
+                    cmd.ExecuteNonQuery();
+                }
             }
 
-            MessageBox.Show("Data berhasil diupdate");
+            MessageBox.Show("Data berhasil diupdate.");
             LoadData();
         }
 
         private void BtnHapus_Click(object sender, EventArgs e)
         {
-            if (dataGridView1.CurrentRow == null)
+            if (isReadOnly)
             {
-                MessageBox.Show("Pilih data terlebih dahulu");
+                MessageBox.Show("Kasir tidak memiliki akses hapus produk.");
                 return;
             }
 
-            int id = Convert.ToInt32(dataGridView1.CurrentRow.Cells["produkID"].Value);
-
-            if (MessageBox.Show("Yakin hapus data?", "Konfirmasi", MessageBoxButtons.YesNo) == DialogResult.No)
+            if (selectedProductId == -1 && dataGridView1.CurrentRow == null)
+            {
+                MessageBox.Show("Pilih data terlebih dahulu.");
                 return;
+            }
+
+            int id = selectedProductId != -1
+                ? selectedProductId
+                : Convert.ToInt32(dataGridView1.CurrentRow.Cells["produkID"].Value);
+
+            var confirm = MessageBox.Show("Yakin hapus data?", "Konfirmasi", MessageBoxButtons.YesNo);
+            if (confirm != DialogResult.Yes) return;
 
             using (SqlConnection conn = new SqlConnection(con))
             {
                 conn.Open();
-
                 string query = "DELETE FROM produk WHERE produkID=@id";
-                SqlCommand cmd = new SqlCommand(query, conn);
 
-                cmd.Parameters.AddWithValue("@id", id);
-                cmd.ExecuteNonQuery();
+                using (SqlCommand cmd = new SqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@id", id);
+                    cmd.ExecuteNonQuery();
+                }
             }
 
-            MessageBox.Show("Data berhasil dihapus");
+            MessageBox.Show("Data berhasil dihapus.");
             LoadData();
-            ClearForm();
         }
 
         private void BtnRefresh_Click(object sender, EventArgs e)
         {
             LoadData();
-        }
-
-        void ClearForm()
-        {
-            txtNamaProduk.Clear();
-            txtHarga.Clear();
-            txtStok.Clear();
-        }
-
-        private void TxtStok_KeyPress(object sender, KeyPressEventArgs e)
-        {
-            if (!char.IsControl(e.KeyChar) && !char.IsDigit(e.KeyChar))
-                e.Handled = true;
         }
     }
 }
