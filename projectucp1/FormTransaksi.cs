@@ -28,6 +28,7 @@ namespace projectucp1
             dgvKeranjang.DataSource = keranjang;
 
             LoadProduk();
+            UpdateTotal();
         }
 
         void LoadProduk()
@@ -35,7 +36,7 @@ namespace projectucp1
             using (SqlConnection conn = new SqlConnection(con))
             {
                 conn.Open();
-                SqlCommand cmd = new SqlCommand("SELECT * FROM produk", conn);
+                SqlCommand cmd = new SqlCommand("SELECT * FROM produk WHERE stok > 0 ORDER BY namaProduk", conn);
                 SqlDataReader r = cmd.ExecuteReader();
 
                 while (r.Read())
@@ -45,33 +46,104 @@ namespace projectucp1
             }
         }
 
-        private void btnTambah_Click(object sender, EventArgs e)
+        private int GetProductStock(int produkID)
         {
-            string[] split = cmbProduk.Text.Split('-');
-            int id = int.Parse(split[0]);
-
             using (SqlConnection conn = new SqlConnection(con))
             {
                 conn.Open();
+                SqlCommand cmd = new SqlCommand("SELECT stok FROM produk WHERE produkID=@id", conn);
+                cmd.Parameters.AddWithValue("@id", produkID);
+                var result = cmd.ExecuteScalar();
+                return result != null ? (int)result : 0;
+            }
+        }
 
-                SqlCommand cmd = new SqlCommand("SELECT * FROM produk WHERE produkID=@id", conn);
-                cmd.Parameters.AddWithValue("@id", id);
+        private void btnTambah_Click(object sender, EventArgs e)
+        {
+            if (cmbProduk.SelectedIndex < 0)
+            {
+                MessageBox.Show("Pilih produk terlebih dahulu", "Peringatan", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
 
-                var r = cmd.ExecuteReader();
-                if (r.Read())
+            if (!int.TryParse(txtQty.Text, out int qty) || qty <= 0)
+            {
+                MessageBox.Show("Jumlah harus berupa angka positif", "Validasi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            try
+            {
+                string[] split = cmbProduk.Text.Split('-');
+                int id = int.Parse(split[0].Trim());
+
+                int availableStock = GetProductStock(id);
+                if (qty > availableStock)
                 {
-                    keranjang.Rows.Add(
-                        id,
-                        r["namaProduk"],
-                        r["harga"],
-                        int.Parse(txtQty.Text)
-                    );
+                    MessageBox.Show($"Stok tidak cukup. Stok tersedia: {availableStock}", "Peringatan", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
                 }
+
+                using (SqlConnection conn = new SqlConnection(con))
+                {
+                    conn.Open();
+
+                    SqlCommand cmd = new SqlCommand("SELECT * FROM produk WHERE produkID=@id", conn);
+                    cmd.Parameters.AddWithValue("@id", id);
+
+                    var r = cmd.ExecuteReader();
+                    if (r.Read())
+                    {
+                        keranjang.Rows.Add(
+                            id,
+                            r["namaProduk"],
+                            r["harga"],
+                            qty
+                        );
+                    }
+                }
+
+                txtQty.Clear();
+                cmbProduk.SelectedIndex = -1;
+                UpdateTotal();
+                MessageBox.Show("Produk berhasil ditambah ke keranjang", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
         private void btnSimpan_Click(object sender, EventArgs e)
         {
+            if (keranjang.Rows.Count == 0)
+            {
+                MessageBox.Show("Keranjang kosong, tambah produk terlebih dahulu", "Peringatan", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            if (!decimal.TryParse(txtBayar.Text, out decimal bayar) || bayar <= 0)
+            {
+                MessageBox.Show("Jumlah pembayaran tidak valid", "Validasi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            decimal total = 0;
+            foreach (DataRow row in keranjang.Rows)
+            {
+                total += decimal.Parse(row["harga"].ToString()) * int.Parse(row["qty"].ToString());
+            }
+
+            if (bayar < total)
+            {
+                MessageBox.Show($"Pembayaran kurang. Total: {total}, Bayar: {bayar}", "Peringatan", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            DialogResult result = MessageBox.Show($"Lanjutkan transaksi?\nTotal: {total}\nBayar: {bayar}", "Konfirmasi Transaksi", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+            if (result != DialogResult.Yes)
+                return;
+
             using (SqlConnection conn = new SqlConnection(con))
             {
                 conn.Open();
@@ -89,7 +161,7 @@ namespace projectucp1
                     foreach (DataRow row in keranjang.Rows)
                     {
                         SqlCommand d = new SqlCommand(
-                            "INSERT INTO detail_transaksi VALUES(@tid,@pid,@qty)",
+                            "INSERT INTO detail_transaksi (transaksiID, produkID, qty) VALUES (@tid,@pid,@qty)",
                             conn, trans);
 
                         d.Parameters.AddWithValue("@tid", transaksiID);
@@ -107,12 +179,13 @@ namespace projectucp1
                     }
 
                     trans.Commit();
-                    MessageBox.Show("Transaksi berhasil");
+                    MessageBox.Show("Transaksi berhasil disimpan", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    ResetForm();
                 }
-                catch
+                catch (Exception ex)
                 {
                     trans.Rollback();
-                    MessageBox.Show("Gagal transaksi");
+                    MessageBox.Show("Gagal transaksi: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             }
         }
@@ -141,8 +214,12 @@ namespace projectucp1
 
         private void txtBayar_TextChanged(object sender, EventArgs e)
         {
+            UpdateTotal();
+        }
+
+        private void UpdateTotal()
+        {
             decimal total = 0;
-            decimal bayar = 0;
 
             foreach (DataRow row in keranjang.Rows)
             {
@@ -151,13 +228,26 @@ namespace projectucp1
                 total += harga * qty;
             }
 
+            lblTotal.Text = $"Total: {total:C}";
+
+            decimal bayar = 0;
             if (decimal.TryParse(txtBayar.Text, out bayar))
             {
                 decimal kembalian = bayar - total;
-                lblKembalian.Text = $"Kembalian: {kembalian}";
+                lblKembalian.Text = $"Kembalian: {kembalian:C}";
             }
+        }
 
-            lblTotal.Text = $"Total: {total}";
+        private void ResetForm()
+        {
+            keranjang.Clear();
+            cmbProduk.Items.Clear();
+            cmbProduk.SelectedIndex = -1;
+            txtHarga.Clear();
+            txtQty.Clear();
+            txtBayar.Clear();
+            LoadProduk();
+            UpdateTotal();
         }
     }
 }
