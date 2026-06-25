@@ -1,30 +1,42 @@
 # 🍞 RAN - Manajemen Penjualan Toko Roti
 
+Aplikasi desktop untuk manajemen penjualan toko roti dengan dua peran pengguna: Admin dan Kasir. Mendukung pengelolaan produk, transaksi, stok, import data Excel, dan laporan penjualan. Dibangun dengan arsitektur client-server menggunakan SQL Server sebagai database terpusat.
+
+**Link Repository:** [https://github.com/nisrinahnfhh/TokoRoti_UCP3_PABD.git](https://github.com/nisrinahnfhh/TokoRoti_UCP3_PABD.git)
+
 ---
 
-## 📋 Daftar Isi
+## Daftar Isi
 
-- [Fitur Utama](#fitur-utama)
+- [Fitur Aplikasi](#fitur-aplikasi)
 - [Teknologi](#teknologi)
 - [Prasyarat Sistem](#prasyarat-sistem)
-- [Instalasi](#instalasi)
-  - [A. Persiapan Laptop Server](#a-persiapan-laptop-server)
-  - [B. Konfigurasi SQL Server](#b-konfigurasi-sql-server)
-  - [C. Instalasi di Laptop Client](#c-instalasi-di-laptop-client)
-- [Cara Penggunaan](#cara-penggunaan)
+- [Panduan Instalasi](#panduan-instalasi)
+  - [Langkah 1 - Konfigurasi SQL Server Authentication](#langkah-1---konfigurasi-sql-server-authentication)
+  - [Langkah 2 - Mengetahui Port TCP yang Digunakan](#langkah-2---mengetahui-port-tcp-yang-digunakan)
+  - [Langkah 3 - Konfigurasi Firewall](#langkah-3---konfigurasi-firewall)
+  - [Langkah 4 - Membuat Installer dengan Inno Setup](#langkah-4---membuat-installer-dengan-inno-setup)
+  - [Langkah 5 - Instalasi di Laptop Client](#langkah-5---instalasi-di-laptop-client)
+- [Panduan Penggunaan](#panduan-penggunaan)
 - [Catatan Penting](#catatan-penting)
-- [Tim Pengembang](#tim-pengembang)
 
 ---
 
-## Fitur Utama
+## Fitur Aplikasi
 
-- Manajemen data produk roti (tambah, ubah, hapus)
-- Pencatatan transaksi penjualan harian
-- Pengelolaan stok bahan baku dan produk
-- Laporan penjualan harian, mingguan, dan bulanan
-- Manajemen pengguna dengan autentikasi login
-- Dukungan multi-client melalui jaringan WiFi lokal
+**Admin:**
+- Mengelola data produk (tambah, update, hapus)
+- Import data produk melalui file Excel
+- Mengelola akun kasir (tambah, update, hapus)
+- Melihat dan mencetak laporan penjualan
+
+**Kasir:**
+- Melihat stok produk
+- Menginput dan mengelola transaksi penjualan
+
+**Umum:**
+- Login dengan username dan password
+- Logout dari aplikasi
 
 ---
 
@@ -35,61 +47,137 @@
 | Bahasa Pemrograman | C# / VB.NET |
 | Framework UI | Windows Forms (.NET Framework) |
 | Database | Microsoft SQL Server |
+| Installer Builder | Inno Setup Compiler |
 | Platform | Windows |
-| Distribusi | Installer (.exe) |
 
 ---
 
 ## Prasyarat Sistem
 
-### Laptop Server
+**Laptop Server:**
 - Windows 10 atau lebih baru
 - Microsoft SQL Server (Express / Developer / Standard)
-- SQL Server Management Studio (SSMS) - opsional
+- SQL Server Management Studio (SSMS)
+- SQL Server Configuration Manager
+- Inno Setup Compiler (untuk membuat file installer)
 - Terhubung ke jaringan WiFi lokal
 
-### Laptop Client
+**Laptop Client:**
 - Windows 10 atau lebih baru
 - .NET Framework (sesuai versi aplikasi)
-- Terhubung ke jaringan WiFi yang **sama** dengan server
+- Terhubung ke jaringan WiFi yang sama dengan server
 
 ---
 
-## Instalasi
+## Panduan Instalasi
 
-### A. Persiapan Laptop Server
+Semua langkah 1 sampai 4 dilakukan di **laptop server**. Langkah 5 dilakukan di **laptop client**.
 
-1. Pastikan **SQL Server** sudah terinstal dan service-nya dalam kondisi **Running**.
-2. Buka **SQL Server Configuration Manager**.
-3. Aktifkan protokol **TCP/IP** pada SQL Server Network Configuration.
-4. Catat nomor **port TCP** yang digunakan (default: 1433 atau TCP Dynamic).
-5. Buka **Windows Firewall** dan tambahkan **Inbound Rule** untuk port SQL Server tersebut.
-6. Pastikan database aplikasi toko roti sudah di-restore atau sudah tersedia di SQL Server.
+---
 
-### B. Konfigurasi SQL Server
+### Langkah 1 - Konfigurasi SQL Server Authentication
 
 1. Buka **SQL Server Management Studio (SSMS)**.
-2. Pastikan login SQL Server Authentication sudah dikonfigurasi dengan benar.
-3. Aktifkan opsi **Mixed Mode Authentication** jika belum aktif (Properties > Security).
-4. Restart SQL Server service setelah perubahan konfigurasi.
+2. Di Object Explorer, klik kanan nama server lalu pilih **Properties**.
+3. Pilih halaman **Security** di panel kiri.
+4. Pada bagian Server Authentication, pilih **"SQL Server and Windows Authentication mode"**.
+5. Klik **OK**.
 
-### C. Instalasi di Laptop Client
+---
+
+### Langkah 2 - Mengetahui Port TCP yang Digunakan
+
+> Langkah ini wajib dilakukan sebelum konfigurasi firewall karena nomor port berbeda di setiap komputer.
+
+1. Buka **SQL Server Configuration Manager**.
+2. Di panel kiri, klik **SQL Server Network Configuration**, lalu klik **Protocols**.
+3. Pastikan status **TCP/IP** adalah **Enabled**.
+4. Double klik **TCP/IP**, lalu pilih tab **IP Addresses**.
+5. Scroll ke paling bawah hingga menemukan bagian **IPAll**.
+6. Catat nilai **TCP Dynamic Ports** karena angka ini akan digunakan pada konfigurasi firewall.
+7. Klik **OK**.
+
+---
+
+### Langkah 3 - Konfigurasi Firewall
+
+#### Membuat Rule untuk Port TCP (Port SQL Server)
+
+1. Buka **Windows Defender Firewall with Advanced Security**.
+2. Klik **Inbound Rules** di panel kiri, lalu klik **New Rule** di panel kanan.
+3. Pilih **Port**, klik **Next**.
+4. Pilih **TCP**, pilih **Specific local ports**, lalu ketik angka port yang dicatat pada Langkah 2 (contoh: 27144). Klik **Next**.
+5. Pilih **Allow the connection**, klik **Next**.
+6. Centang semua: **Domain**, **Private**, **Public**. Klik **Next**.
+7. Isi Name: `SQL Server NANA 27144`, lalu klik **Finish**.
+
+#### Membuat Rule untuk Port UDP 1434 (SQL Server Browser)
+
+1. Buka **Windows Defender Firewall with Advanced Security**.
+2. Klik **Inbound Rules** di panel kiri, lalu klik **New Rule** di panel kanan.
+3. Pilih **Port**, klik **Next**.
+4. Pilih **UDP**, pilih **Specific local ports**, ketik `1434`, lalu klik **Next**.
+5. Pilih **Allow the connection**, klik **Next**.
+6. Centang semua: **Domain**, **Private**, **Public**. Klik **Next**.
+7. Isi Name: `SQL Browser 1434`, lalu klik **Finish**.
+
+Pastikan rule untuk Port TCP dan Port UDP sudah berhasil dibuat.
+
+---
+
+### Langkah 4 - Membuat Installer dengan Inno Setup
+
+1. Buka **Inno Setup Compiler**.
+2. Pilih **"Create a new script file using the Script Wizard"**, klik **OK**.
+3. Klik **Next** pada halaman Welcome.
+4. Isi informasi aplikasi sesuai kebutuhan.
+5. Biarkan pengaturan folder instalasi default, klik **Next**.
+6. Pada halaman **Application Files**:
+   - Klik **Browse** di Application main executable file, masuk ke folder `bin\Release\`, pilih `projectucp1.exe`, klik **Open**.
+   - Klik **Add folder**, pilih seluruh folder `bin\Release\`, klik **OK**.
+   - Klik **Next**.
+7. Pada halaman **Application File Association**, ubah extension menjadi `.exe`, klik **Next**.
+8. Klik **Next** pada halaman Shortcuts, Documentation, Install Mode, dan Languages.
+9. Pada halaman **Compiler Settings**, ubah nilai **compiler output base file name** dari `mysetup` menjadi `TokoRotiSetup`. Klik **Next**.
+10. Klik **Next**, **Next**, lalu **Finish**.
+
+File `TokoRotiSetup.exe` siap untuk didistribusikan ke laptop client.
+
+---
+
+### Langkah 5 - Instalasi di Laptop Client
 
 1. Copy file `TokoRotiSetup.exe` dari laptop server ke laptop client menggunakan flashdisk.
 2. Di laptop client, double klik `TokoRotiSetup.exe` untuk memulai instalasi.
 3. Klik **Next** pada halaman Welcome.
-4. Pilih lokasi instalasi, biarkan default, lalu klik **Next**.
+4. Pilih lokasi instalasi, biarkan default, klik **Next**.
 5. Klik **Install** dan tunggu hingga proses selesai.
-6. Klik **Finish** untuk menutup wizard instalasi.
-7. Buka aplikasi melalui shortcut di Desktop atau Start Menu.
+6. Klik **Finish**.
+7. Buka aplikasi dari shortcut Desktop atau Start Menu.
 8. Masukkan username dan password, lalu klik **Login**.
 
 ---
 
-## Cara Penggunaan
+## Panduan Penggunaan
 
-1. Pastikan laptop server sudah menyala dan SQL Server service sedang berjalan.
-2. Pastikan laptop client dan server terhubung ke jaringan WiFi yang sama.
-3. Buka aplikasi dari shortcut Desktop atau Start Menu.
-4. Login menggunakan akun yang sudah terdaftar.
-5. Gunakan menu navigasi untuk mengakses fitur yang tersedia.
+### Login sebagai Admin
+
+1. Masukkan username dan password Admin, klik **Login**.
+2. Setelah masuk, Admin dapat:
+   - Menambah, mengupdate, dan menghapus data produk
+   - Mengimport data produk melalui file Excel
+   - Menambah, mengupdate, dan menghapus akun kasir
+   - Melihat dan mencetak laporan penjualan
+
+### Login sebagai Kasir
+
+1. Masukkan username dan password Kasir, klik **Login**.
+2. Setelah masuk, Kasir dapat:
+   - Melihat stok produk
+   - Menginput dan mengelola transaksi penjualan
+
+### Logout
+
+Baik Admin maupun Kasir dapat melakukan logout dari dalam aplikasi.
+
+---
